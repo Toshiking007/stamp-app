@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>スタンプアプリ - 研修参加確認</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎫 スタンプアプリ</h1>
+            <div class="points">
+                ポイント: <span id="pointsDisplay">0</span>
+            </div>
+        </header>
+
+        <main>
+            <section class="password-section">
+                <h2>🔑 研修参加確認</h2>
+                <div class="password-input-area">
+                    <div class="password-instructions">
+                        <p>研修に参加された方は、管理者からパスワードを教えてもらい、下記に入力してください。</p>
+                    </div>
+                    <div class="password-form">
+                        <input type="text" id="manual-qr" placeholder="管理者から教えてもらったパスワードを入力" class="password-input">
+                        <button id="manual-scan" class="btn btn-primary">参加確認</button>
+                    </div>
+                    <div id="status-display" class="status-display">管理者にパスワードをお尋ねください</div>
+                    <div id="password-expiry-display" class="password-expiry-display" style="display: none;">
+                        <small>有効期限: <span id="password-expiry-time">--</span></small>
+                    </div>
+                </div>
+            </section>
+
+            <section class="stamp-section">
+                <h2>スタンプカード</h2>
+                <div class="stamp-card">
+                    <div class="stamp" id="stamp1"></div>
+                    <div class="stamp" id="stamp2"></div>
+                    <div class="stamp" id="stamp3"></div>
+                </div>
+                <div class="stamp-info">
+                    <p>スタンプ: <span id="stampCount">0</span>/3</p>
+                    <p id="couponStatus">3つ集めると1000円割引クーポンGET!</p>
+                </div>
+            </section>
+
+            <section class="coupon-section" id="couponSection" style="display: none;">
+                <h2>🎉 おめでとうございます！</h2>
+                <div class="coupon">
+                    <h3>1000円割引クーポン</h3>
+                    <p>次回のお会計が1000円OFF!</p>
+                    <div class="coupon-code">クーポンコード: STAMP50</div>
+                    <button id="use-coupon" class="btn">クーポンを使用</button>
+                </div>
+            </section>
+        </main>
+
+        <div id="message" class="message"></div>
+
+        <!-- フッター - 管理者リンク -->
+        <footer class="footer">
+            <a href="#" onclick="authenticateAdmin(); return false;" class="admin-link-footer">管理</a>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
