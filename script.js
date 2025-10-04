@@ -1,3 +1,17 @@
+// Firebase設定
+const firebaseConfig = {
+  apiKey: "AIzaSyDvg3SAKhqcnEiQRlgdCjzT1gLg2GgioN4",
+  authDomain: "stamp-app-65e27.firebaseapp.com",
+  projectId: "stamp-app-65e27",
+  storageBucket: "stamp-app-65e27.firebasestorage.app",
+  messagingSenderId: "178934669247",
+  appId: "1:178934669247:web:52742f44b4715898d90b0a"
+};
+
+// Firebase初期化
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
 class StampApp {
     constructor() {
         this.points = parseInt(localStorage.getItem('points')) || 0;
@@ -60,25 +74,43 @@ class StampApp {
         }
     }
 
-    // パスワードが正しいかチェック
-    isValidPassword(password) {
-        const validPassword = this.getCurrentValidPassword();
+    // パスワードが正しいかチェック（Firestore版）
+    async isValidPassword(password) {
+        try {
+            // Firestoreからパスワード情報を取得
+            const doc = await db.collection('passwords').doc(password).get();
 
-        // 期限切れの場合
-        if (validPassword === null) {
-            console.log('🔍 パスワード認証: 期限切れ');
-            return 'expired';
+            if (!doc.exists) {
+                console.log('🔍 パスワード認証: パスワードが存在しません');
+                return false;
+            }
+
+            const passwordData = doc.data();
+
+            // 期限切れチェック
+            if (passwordData.expiryTimestamp && Date.now() > passwordData.expiryTimestamp) {
+                console.log('🔍 パスワード認証: 期限切れ');
+                return 'expired';
+            }
+
+            // 使用済みチェック
+            if (passwordData.used) {
+                console.log('🔍 パスワード認証: 既に使用済み');
+                return 'used';
+            }
+
+            console.log('🔍 パスワード認証: 有効');
+            return true;
+
+        } catch (error) {
+            console.error('❌ パスワード検証エラー:', error);
+            // エラー時はlocalStorageにフォールバック
+            const validPassword = this.getCurrentValidPassword();
+            if (validPassword === null) {
+                return 'expired';
+            }
+            return password === validPassword;
         }
-
-        const isValid = password === validPassword;
-
-        console.log('🔍 パスワード認証:', {
-            input: password,
-            valid: validPassword,
-            isMatch: isValid
-        });
-
-        return isValid;
     }
 
     // 救済パスワードかチェック
@@ -313,7 +345,7 @@ class StampApp {
 
     // QRスキャン機能は削除（パスワード入力のみ使用）
 
-    handleQRCodeScan(rawInput) {
+    async handleQRCodeScan(rawInput) {
         try {
             console.log('🔍 パスワード認証開始');
             console.log('📥 受信した入力:', JSON.stringify(rawInput));
@@ -337,22 +369,19 @@ class StampApp {
                 return;
             }
 
-            // ステップ4: 重複利用チェック（通常パスワードのみ）
-            if (this.isPasswordAlreadyUsed()) {
-                console.log('⚠️ 既にパスワードが使用済み');
-                this.showMessage(
-                    `⚠️ パスワードは既に使用済みです\n\n※ お一人様1回限りです`,
-                    'error'
-                );
-                return;
-            }
-
-            // ステップ5: 通常パスワード認証
-            const validationResult = this.isValidPassword(normalizedInput);
+            // ステップ4: 通常パスワード認証（Firestore版）
+            const validationResult = await this.isValidPassword(normalizedInput);
             if (validationResult === 'expired') {
                 console.log('⏰ パスワードが期限切れ:', normalizedInput);
                 this.showMessage(
                     `⏰ このパスワードは期限切れです\n\n有効期限が過ぎています\n※ 管理者に新しいパスワードの生成をお尋ねください`,
+                    'error'
+                );
+                return;
+            } else if (validationResult === 'used') {
+                console.log('⚠️ 既にパスワードが使用済み');
+                this.showMessage(
+                    `⚠️ このパスワードは既に使用済みです\n\n※ お一人様1回限りです`,
                     'error'
                 );
                 return;
@@ -365,9 +394,9 @@ class StampApp {
                 return;
             }
 
-            // ステップ6: 認証成功 - ポイント・スタンプ付与
+            // ステップ5: 認証成功 - ポイント・スタンプ付与
             console.log('✅ パスワード認証成功:', normalizedInput);
-            this.processValidPassword();
+            await this.processValidPassword(normalizedInput);
 
         } catch (error) {
             console.error('❌ パスワード認証エラー:', error);
@@ -375,8 +404,8 @@ class StampApp {
         }
     }
 
-    // 有効なパスワードの処理
-    processValidPassword() {
+    // 有効なパスワードの処理（Firestore版）
+    async processValidPassword(password) {
         try {
             console.log('🎉 パスワード認証処理開始');
 
@@ -384,9 +413,22 @@ class StampApp {
             this.addPoints(10);
             this.addStamp();
 
-            // 使用済みとして記録（現在のパスワードを保存）
-            const currentPassword = this.getCurrentValidPassword();
-            this.scannedCodes.push(currentPassword);
+            // Firestoreでパスワードを使用済みにマーク
+            await db.collection('passwords').doc(password).update({
+                used: true,
+                usedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            // 使用履歴をFirestoreに保存
+            await db.collection('usage_history').add({
+                password: password,
+                points: 10,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                userAgent: navigator.userAgent
+            });
+
+            // LocalStorageにも記録（フォールバック用）
+            this.scannedCodes.push(password);
             localStorage.setItem('scannedCodes', JSON.stringify(this.scannedCodes));
 
             // 管理者システムに使用通知を送信
@@ -397,8 +439,6 @@ class StampApp {
                 `🎉 認証成功！\n\n+10ポイント獲得\nスタンプ+1\n\n研修参加ありがとうございます！`,
                 'success'
             );
-
-            // 認証処理完了
 
             console.log('✅ パスワード認証処理完了:', {
                 totalPoints: this.points,
