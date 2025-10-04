@@ -1,3 +1,17 @@
+// Firebase設定
+const firebaseConfig = {
+  apiKey: "AIzaSyDvg3SAKhqcnEiQRlgdCjzT1gLg2GgioN4",
+  authDomain: "stamp-app-65e27.firebaseapp.com",
+  projectId: "stamp-app-65e27",
+  storageBucket: "stamp-app-65e27.firebasestorage.app",
+  messagingSenderId: "178934669247",
+  appId: "1:178934669247:web:52742f44b4715898d90b0a"
+};
+
+// Firebase初期化
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
 class AdminPasswordManager {
     constructor() {
         // 管理者パスワード（固定）
@@ -70,14 +84,14 @@ class AdminPasswordManager {
     }
 
     // 新しいパスワードを生成
-    generateNewPassword() {
+    async generateNewPassword() {
         try {
             console.log('🎲 新しいパスワード生成開始');
 
             const newPassword = this.generateRandomPassword();
             const timestamp = new Date().toLocaleString('ja-JP');
 
-            // ローカルストレージに保存（有効期限を追加）
+            // パスワードデータ作成
             const now = Date.now();
             const expiryTime = now + this.PASSWORD_VALIDITY_MS;
             const passwordData = {
@@ -85,9 +99,14 @@ class AdminPasswordManager {
                 generatedAt: timestamp,
                 generatedTimestamp: now,
                 expiryTimestamp: expiryTime,
-                expiryAt: new Date(expiryTime).toLocaleString('ja-JP')
+                expiryAt: new Date(expiryTime).toLocaleString('ja-JP'),
+                used: false
             };
 
+            // Firestoreに保存
+            await db.collection('passwords').doc(newPassword).set(passwordData);
+
+            // LocalStorageにも保存（互換性のため）
             localStorage.setItem('currentPassword', JSON.stringify(passwordData));
 
             // 既存の使用履歴をリセット（新しいパスワードなので）
@@ -162,9 +181,41 @@ class AdminPasswordManager {
         }
     }
 
-    // 使用統計を更新
-    updateUsageStats() {
+    // 使用統計を更新（Firestore版）
+    async updateUsageStats() {
         try {
+            // Firestoreから使用履歴を取得
+            const snapshot = await db.collection('usage_history')
+                .orderBy('timestamp', 'desc')
+                .limit(100)
+                .get();
+
+            const usageCount = snapshot.size;
+            let lastUsage = '未使用';
+
+            if (!snapshot.empty) {
+                const lastDoc = snapshot.docs[0];
+                const lastData = lastDoc.data();
+                if (lastData.timestamp) {
+                    lastUsage = lastData.timestamp.toDate().toLocaleString('ja-JP');
+                }
+            }
+
+            const usageCountEl = document.getElementById('usage-count');
+            const lastUsageEl = document.getElementById('last-usage');
+
+            if (usageCountEl) usageCountEl.textContent = usageCount;
+            if (lastUsageEl) lastUsageEl.textContent = lastUsage;
+
+            // LocalStorageにも保存（互換性のため）
+            localStorage.setItem('passwordUsageCount', usageCount.toString());
+            if (lastUsage !== '未使用') {
+                localStorage.setItem('lastPasswordUsage', lastUsage);
+            }
+
+        } catch (error) {
+            console.error('❌ 使用統計更新エラー:', error);
+            // エラー時はlocalStorageから読み込み
             const usageCount = parseInt(localStorage.getItem('passwordUsageCount')) || 0;
             const lastUsage = localStorage.getItem('lastPasswordUsage') || '未使用';
 
@@ -173,9 +224,6 @@ class AdminPasswordManager {
 
             if (usageCountEl) usageCountEl.textContent = usageCount;
             if (lastUsageEl) lastUsageEl.textContent = lastUsage;
-
-        } catch (error) {
-            console.error('❌ 使用統計更新エラー:', error);
         }
     }
 
