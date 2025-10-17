@@ -514,7 +514,7 @@ class AdminPasswordManager {
     }
 
     // 救済措置用パスワード生成
-    generateRescuePassword() {
+    async generateRescuePassword() {
         try {
             console.log('🆘 救済パスワード生成開始');
 
@@ -533,23 +533,74 @@ class AdminPasswordManager {
             // ランダムパスワード生成
             const rescuePassword = this.generateRandomPassword();
             const timestamp = new Date().toLocaleString('ja-JP');
+            const now = Date.now();
+            const expiryTime = now + (7 * 24 * 60 * 60 * 1000); // 7日間有効
 
-            // 救済パスワードデータを保存（LocalStorageに保存）
-            const rescueData = {
+            console.log('========== [救済パスワード] 生成開始 ==========');
+            console.log('🔍 [救済パスワード] パスワード:', rescuePassword);
+            console.log('🔍 [救済パスワード] 経験値:', exp);
+            console.log('🔍 [救済パスワード] 研修会タイプ:', trainingType);
+
+            // 本日のパスワード生成と同じ構造でFirestoreに保存
+            const passwordData = {
                 password: rescuePassword,
-                points: exp, // 互換性のため'points'キーを維持
-                trainingType: trainingType,
                 generatedAt: timestamp,
-                generatedTimestamp: Date.now()
+                generatedTimestamp: now,
+                expiryTimestamp: expiryTime,
+                expiryAt: new Date(expiryTime).toLocaleString('ja-JP'),
+                trainingType: trainingType,
+                expAmount: exp, // ★重要: expAmountキーを使用（本日のパスワードと同じ）
+                used: false,
+                isRescue: true // 救済パスワードであることを示すフラグ
             };
 
+            console.log('🔍 [救済パスワード] passwordData作成完了:');
+            console.log('  - password:', passwordData.password);
+            console.log('  - trainingType:', passwordData.trainingType);
+            console.log('  - expAmount:', passwordData.expAmount, '(型:', typeof passwordData.expAmount, ')');
+            console.log('  - used:', passwordData.used);
+            console.log('  - isRescue:', passwordData.isRescue);
+
+            // Firestoreに保存
+            console.log('🔍 [救済パスワード] Firestoreに保存開始...');
+            await db.collection('passwords').doc(rescuePassword).set(passwordData);
+            console.log('✅ [救済パスワード] Firestoreに保存完了！');
+
+            // 保存されたデータを再取得して確認
+            console.log('🔍 [救済パスワード] 保存データを再取得して確認...');
+            const verifyDoc = await db.collection('passwords').doc(rescuePassword).get();
+            if (verifyDoc.exists) {
+                const verifyData = verifyDoc.data();
+                console.log('✅ [救済パスワード] Firestoreから再取得成功:');
+                console.log('  - expAmount:', verifyData.expAmount, '(型:', typeof verifyData.expAmount, ')');
+                console.log('  - trainingType:', verifyData.trainingType);
+                console.log('  - isRescue:', verifyData.isRescue);
+
+                if (verifyData.expAmount !== exp) {
+                    console.error('❌ [救済パスワード] 警告: 保存された値が異なります！');
+                    console.error('  - 設定値:', exp);
+                    console.error('  - 保存値:', verifyData.expAmount);
+                }
+            } else {
+                console.error('❌ [救済パスワード] エラー: 保存したパスワードが見つかりません');
+            }
+            console.log('========== [救済パスワード] 生成完了 ==========');
+
+            // LocalStorageにも保存（後方互換性のため）
+            const rescueData = {
+                password: rescuePassword,
+                points: exp,
+                trainingType: trainingType,
+                generatedAt: timestamp,
+                generatedTimestamp: now
+            };
             localStorage.setItem('rescuePassword', JSON.stringify(rescueData));
 
             // 表示を更新
             this.showRescuePassword(rescuePassword, exp, timestamp);
-            this.showMessage(`✅ ${exp}経験値用救済パスワードを生成しました: ${rescuePassword}\n研修会タイプ: ${trainingType}`, 'success');
+            this.showMessage(`✅ ${exp}経験値用救済パスワードを生成しました: ${rescuePassword}\n研修会タイプ: ${trainingType}\n有効期限: 7日間`, 'success');
 
-            console.log('✅ 救済パスワード生成完了:', rescueData);
+            console.log('✅ 救済パスワード生成完了:', passwordData);
 
         } catch (error) {
             console.error('❌ 救済パスワード生成エラー:', error);
@@ -753,7 +804,7 @@ function renderUsersTable() {
     tbody.innerHTML = '';
 
     if (filteredUsers.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 40px;">ユーザーが見つかりません</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; padding: 40px;">ユーザーが見つかりません</td></tr>';
     } else {
         filteredUsers.forEach(user => {
             const row = document.createElement('tr');
@@ -782,6 +833,7 @@ function renderUsersTable() {
                 <td>${user.lastVisit ? formatDate(user.lastVisit) : '未参加'}</td>
                 <td>${abilitiesHtml}</td>
                 <td><button class="btn btn-small btn-info ability-manage-btn" data-user-id="${user.id}" data-user-name="${escapeHtml(user.name)}">アビリティ管理</button></td>
+                <td><button class="btn btn-small btn-danger delete-user-btn" data-user-id="${user.id}" data-user-name="${escapeHtml(user.name)}">削除</button></td>
             `;
             tbody.appendChild(row);
         });
@@ -1269,6 +1321,35 @@ function closeAbilityManagementModal() {
     currentAbilityUserName = '';
 }
 
+// ユーザーを削除
+async function deleteUser(userId, userName) {
+    try {
+        console.log('🗑️ ユーザー削除開始:', { userId, userName });
+
+        // 確認ダイアログを表示
+        const confirmMessage = `本当に ${userName} を削除しますか？\n\nこの操作は取り消せません。`;
+        if (!confirm(confirmMessage)) {
+            console.log('⚠️ ユーザー削除がキャンセルされました');
+            return;
+        }
+
+        console.log('🔄 Firestoreからユーザーを削除中...');
+
+        // Firestoreからユーザーを削除
+        await db.collection('users').doc(userId).delete();
+
+        console.log('✅ ユーザー削除完了');
+        showUserMessage(`${userName} を削除しました`, 'success');
+
+        // ユーザーリストを再読み込み
+        await loadUsers();
+
+    } catch (error) {
+        console.error('❌ ユーザー削除エラー:', error);
+        showUserMessage('ユーザーの削除に失敗しました: ' + error.message, 'error');
+    }
+}
+
 // イベントリスナーの設定
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🔧 [アビリティ管理] DOMContentLoaded: イベントリスナー設定開始');
@@ -1321,8 +1402,28 @@ document.addEventListener('DOMContentLoaded', () => {
             // アビリティ管理モーダルを開く
             openAbilityManagementModal(userId, userName);
         }
+
+        // ユーザー削除ボタンがクリックされたかチェック
+        if (e.target.classList.contains('delete-user-btn')) {
+            console.log('🖱️ [ユーザー削除] 削除ボタンがクリックされました');
+
+            const userId = e.target.dataset.userId;
+            const userName = e.target.dataset.userName;
+
+            console.log('📋 [ユーザー削除] ユーザー情報:', { userId, userName });
+
+            if (!userId) {
+                console.error('❌ [ユーザー削除] ユーザーIDが取得できません');
+                showUserMessage('ユーザーIDが取得できません', 'error');
+                return;
+            }
+
+            // ユーザーを削除
+            deleteUser(userId, userName);
+        }
     });
 
     console.log('✅ [アビリティ管理] イベント委譲設定完了（ability-manage-btn）');
+    console.log('✅ [ユーザー削除] イベント委譲設定完了（delete-user-btn）');
     console.log('✅ [アビリティ管理] すべてのイベントリスナー設定完了');
 });
