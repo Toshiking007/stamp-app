@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>My Level App - 研修参加確認</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- クラス選択モーダル -->
+        <div id="class-selection-modal" class="modal" style="display: none;">
+            <div class="modal-content class-selection-content">
+                <h2>🎓 レベル20到達！クラスを選択してください</h2>
+                <p class="class-selection-description">
+                    おめでとうございます！レベル20に到達しました。<br>
+                    これから専門分野を選択して、さらなる成長を目指しましょう！
+                </p>
+                <div class="class-options">
+                    <div class="class-option" data-class="フットコアマスター">
+                        <div class="class-icon">👣</div>
+                        <div class="class-name">フットコアマスター</div>
+                        <div class="class-description">
+                            歩行系研修会で<strong>+100経験値</strong>のボーナス！<br>
+                            歩行分析のスペシャリストを目指す方に最適です。
+                        </div>
+                    </div>
+                    <div class="class-option" data-class="ハンドマスター">
+                        <div class="class-icon">✋</div>
+                        <div class="class-name">ハンドマスター</div>
+                        <div class="class-description">
+                            手系研修会で<strong>+100経験値</strong>のボーナス！<br>
+                            上肢機能のエキスパートを目指す方に最適です。
+                        </div>
+                    </div>
+                    <div class="class-option" data-class="オールラウンダー">
+                        <div class="class-icon">🌟</div>
+                        <div class="class-name">オールラウンダー</div>
+                        <div class="class-description">
+                            歩行・手系研修会の両方で<strong>+90経験値</strong>のボーナス！<br>
+                            バランスの取れた成長を目指す方に最適です。
+                        </div>
+                    </div>
+                </div>
+                <p class="class-selection-note">
+                    ※ 一度選択すると変更できません。慎重に選んでください。
+                </p>
+            </div>
+        </div>
+
+        <!-- ユーザー登録モーダル -->
+        <div id="user-registration-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h2>👤 ユーザー登録</h2>
+                <p>初回利用時には登録が必要です</p>
+                <form id="user-registration-form">
+                    <div class="form-group">
+                        <label for="user-name">名前 <span class="required">*</span></label>
+                        <input type="text" id="user-name" required placeholder="山田太郎">
+                    </div>
+                    <div class="form-group">
+                        <label for="user-profession">職種 <span class="required">*</span></label>
+                        <select id="user-profession" required>
+                            <option value="">選択してください</option>
+                            <option value="PT">PT（理学療法士）</option>
+                            <option value="OT">OT（作業療法士）</option>
+                            <option value="ST">ST（言語聴覚士）</option>
+                            <option value="その他">その他</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="user-affiliation">所属</label>
+                        <input type="text" id="user-affiliation" placeholder="○○病院">
+                    </div>
+                    <div class="form-group">
+                        <label for="user-prefecture">都道府県</label>
+                        <select id="user-prefecture">
+                            <option value="">選択してください</option>
+                            <option value="北海道">北海道</option>
+                            <option value="青森県">青森県</option>
+                            <option value="岩手県">岩手県</option>
+                            <option value="宮城県">宮城県</option>
+                            <option value="秋田県">秋田県</option>
+                            <option value="山形県">山形県</option>
+                            <option value="福島県">福島県</option>
+                            <option value="茨城県">茨城県</option>
+                            <option value="栃木県">栃木県</option>
+                            <option value="群馬県">群馬県</option>
+                            <option value="埼玉県">埼玉県</option>
+                            <option value="千葉県">千葉県</option>
+                            <option value="東京都">東京都</option>
+                            <option value="神奈川県">神奈川県</option>
+                            <option value="新潟県">新潟県</option>
+                            <option value="富山県">富山県</option>
+                            <option value="石川県">石川県</option>
+                            <option value="福井県">福井県</option>
+                            <option value="山梨県">山梨県</option>
+                            <option value="長野県">長野県</option>
+                            <option value="岐阜県">岐阜県</option>
+                            <option value="静岡県">静岡県</option>
+                            <option value="愛知県">愛知県</option>
+                            <option value="三重県">三重県</option>
+                            <option value="滋賀県">滋賀県</option>
+                            <option value="京都府">京都府</option>
+                            <option value="大阪府">大阪府</option>
+                            <option value="兵庫県">兵庫県</option>
+                            <option value="奈良県">奈良県</option>
+                            <option value="和歌山県">和歌山県</option>
+                            <option value="鳥取県">鳥取県</option>
+                            <option value="島根県">島根県</option>
+                            <option value="岡山県">岡山県</option>
+                            <option value="広島県">広島県</option>
+                            <option value="山口県">山口県</option>
+                            <option value="徳島県">徳島県</option>
+                            <option value="香川県">香川県</option>
+                            <option value="愛媛県">愛媛県</option>
+                            <option value="高知県">高知県</option>
+                            <option value="福岡県">福岡県</option>
+                            <option value="佐賀県">佐賀県</option>
+                            <option value="長崎県">長崎県</option>
+                            <option value="熊本県">熊本県</option>
+                            <option value="大分県">大分県</option>
+                            <option value="宮崎県">宮崎県</option>
+                            <option value="鹿児島県">鹿児島県</option>
+                            <option value="沖縄県">沖縄県</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="user-experience">経験年数</label>
+                        <input type="number" id="user-experience" min="0" max="99" placeholder="5">
+                        <span class="input-hint">年</span>
+                    </div>
+                    <button type="submit" class="btn btn-primary">登録する</button>
+                </form>
+            </div>
+        </div>
+
+        <header>
+            <div class="top-header">
+                <!-- 音量ボタンを右上に固定 -->
+                <button id="mute-button" class="volume-button" onclick="toggleSound()" title="音声のON/OFF">
+                    🔊
+                </button>
+
+                <!-- アプリタイトル -->
+                <div class="app-title-center">
+                    <div class="star-line">
+                        <span id="home-stars" class="star-display"></span>
+                    </div>
+                    <div class="app-name-line">
+                        <span class="app-icon">📱</span>
+                        <span class="app-name">My Level App</span>
+                    </div>
+                </div>
+            </div>
+            <div class="level-info">
+                <div class="level-badge">
+                    Lv.<span id="levelDisplay">1</span>
+                </div>
+                <div class="exp-info">
+                    <div class="exp-text">
+                        経験値: <span id="currentExpDisplay">0</span> / <span id="nextLevelExpDisplay">100</span>
+                    </div>
+                    <div class="exp-bar-container">
+                        <div class="exp-bar" id="expBar"></div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- タブナビゲーション -->
+        <nav class="tab-navigation">
+            <button class="tab-button active" onclick="switchTab('home')">🏠 ホーム</button>
+            <button class="tab-button" onclick="switchTab('status')">📊 ステータス</button>
+        </nav>
+
+        <main>
+            <!-- ホーム画面 -->
+            <div id="home-tab" class="tab-content active">
+            <section class="password-section">
+                <h2>🔑 研修参加確認</h2>
+                <div class="password-input-area">
+                    <div class="password-instructions">
+                        <p>研修に参加された方は、管理者からパスワードを教えてもらい、下記に入力してください。</p>
+                    </div>
+                    <div class="password-form">
+                        <input type="text" id="manual-qr" placeholder="管理者から教えてもらったパスワードを入力" class="password-input">
+                        <button id="submit-password" class="btn btn-primary">参加確認</button>
+                    </div>
+                    <div id="status-display" class="status-display">管理者にパスワードをお尋ねください</div>
+                    <div id="password-expiry-display" class="password-expiry-display" style="display: none;">
+                        <small>有効期限: <span id="password-expiry-time">--</span></small>
+                    </div>
+                </div>
+            </section>
+
+            <section class="stamp-section">
+                <h2>スタンプカード</h2>
+                <div class="stamp-card">
+                    <div class="stamp" id="stamp1"></div>
+                    <div class="stamp" id="stamp2"></div>
+                    <div class="stamp" id="stamp3"></div>
+                </div>
+                <div class="stamp-info">
+                    <p>スタンプ: <span id="stampCount">0</span>/3</p>
+                    <p id="couponStatus">3つ集めると1000円割引クーポンGET!</p>
+                </div>
+            </section>
+
+            <section class="coupon-section" id="couponSection" style="display: none;">
+                <h2>🎉 おめでとうございます！</h2>
+                <div class="coupon">
+                    <h3>1000円割引クーポン</h3>
+                    <p>次回のお会計が1000円OFF!</p>
+                    <div class="coupon-code">クーポンコード: STAMP50</div>
+                    <button id="use-coupon" class="btn">クーポンを使用</button>
+                </div>
+            </section>
+            </div>
+
+            <!-- ステータス画面 -->
+            <div id="status-tab" class="tab-content">
+                <section class="status-section">
+                    <h2>📊 ステータス</h2>
+
+                    <div class="status-card">
+                        <div class="status-header">
+                            <div class="status-name" id="status-name">-</div>
+                            <div class="status-title" id="status-title">みならいセラピスト</div>
+                        </div>
+
+                        <div class="status-level-display">
+                            <div class="status-level-badge">
+                                <div class="level-label">レベル</div>
+                                <div class="level-number" id="status-level">1</div>
+                            </div>
+                            <div class="status-exp-details">
+                                <div class="exp-detail-row">
+                                    <span class="label">次のレベルまで:</span>
+                                    <span class="value" id="status-exp-to-next">0 / 100</span>
+                                </div>
+                                <div class="exp-detail-row">
+                                    <span class="label">累積経験値:</span>
+                                    <span class="value" id="status-total-exp">0</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="status-details">
+                            <div class="status-row" id="status-class-row" style="display: none;">
+                                <span class="status-label">クラス:</span>
+                                <span class="status-value" id="status-class">未選択</span>
+                            </div>
+
+                            <!-- アビリティ表示セクション -->
+                            <div class="status-row" id="status-abilities-row" style="display: none;">
+                                <span class="status-label">🏅 保有アビリティ:</span>
+                                <span class="status-value" id="status-abilities">-</span>
+                            </div>
+
+                            <div class="status-row">
+                                <span class="status-label">職種:</span>
+                                <span class="status-value" id="status-profession">-</span>
+                            </div>
+                            <div class="status-row">
+                                <span class="status-label">所属:</span>
+                                <span class="status-value" id="status-affiliation">-</span>
+                            </div>
+                            <div class="status-row">
+                                <span class="status-label">都道府県:</span>
+                                <span class="status-value" id="status-prefecture">-</span>
+                            </div>
+                            <div class="status-row">
+                                <span class="status-label">経験年数:</span>
+                                <span class="status-value" id="status-experience">-</span>
+                            </div>
+                            <div class="status-row">
+                                <span class="status-label">参加回数:</span>
+                                <span class="status-value" id="status-participation">0回</span>
+                            </div>
+                            <div class="status-row">
+                                <span class="status-label">最終参加日:</span>
+                                <span class="status-value" id="status-last-visit">未参加</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <div id="message" class="message"></div>
+
+        <!-- フッター - 管理者リンク -->
+        <footer class="footer">
+            <a href="#" onclick="authenticateAdmin(); return false;" class="admin-link-footer">管理</a>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

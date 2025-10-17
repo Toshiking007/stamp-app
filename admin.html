@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Level App - 管理者画面</title>
+    <link rel="stylesheet" href="admin.css">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <!-- Google Charts API（QRコード生成用） -->
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔧 My Level App - 管理者画面</h1>
+            <div class="nav-links">
+                <a href="#" onclick="showUsersPage(); return false;" class="nav-link">👥 ユーザー一覧</a>
+                <a href="#" onclick="window.history.back(); return false;" class="nav-link">📱 受講生アプリに戻る</a>
+            </div>
+        </header>
+
+        <main>
+            <!-- ユーザー一覧ページ -->
+            <div id="users-panel" style="display: none;">
+                <div class="back-button-container">
+                    <button onclick="showAdminPanel(); return false;" class="btn btn-secondary">← パスワード管理に戻る</button>
+                </div>
+
+                <section class="users-section">
+                    <h2>👥 ユーザー一覧</h2>
+
+                    <div class="users-controls">
+                        <div class="filter-group">
+                            <label>職種でフィルター:</label>
+                            <select id="filter-profession" onchange="applyFilters()">
+                                <option value="">全て</option>
+                                <option value="PT">PT</option>
+                                <option value="OT">OT</option>
+                                <option value="ST">ST</option>
+                                <option value="その他">その他</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>都道府県でフィルター:</label>
+                            <select id="filter-prefecture" onchange="applyFilters()">
+                                <option value="">全て</option>
+                            </select>
+                        </div>
+                        <div class="sort-group">
+                            <label>並び替え:</label>
+                            <select id="sort-by" onchange="applySorting()">
+                                <option value="level-desc">レベル（高い順）</option>
+                                <option value="level-asc">レベル（低い順）</option>
+                                <option value="exp-desc">経験値（多い順）</option>
+                                <option value="exp-asc">経験値（少ない順）</option>
+                                <option value="participationCount-desc">参加回数（多い順）</option>
+                                <option value="participationCount-asc">参加回数（少ない順）</option>
+                                <option value="name-asc">名前（昇順）</option>
+                                <option value="name-desc">名前（降順）</option>
+                                <option value="lastVisit-desc">最終参加日（新しい順）</option>
+                                <option value="lastVisit-asc">最終参加日（古い順）</option>
+                            </select>
+                        </div>
+                        <button onclick="exportCSV()" class="btn btn-success">📥 CSVエクスポート</button>
+                        <button onclick="loadUsers()" class="btn btn-info">🔄 更新</button>
+                    </div>
+
+                    <div class="users-stats">
+                        <div class="stat-card">
+                            <div class="stat-label">総ユーザー数</div>
+                            <div class="stat-value" id="total-users">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">表示中</div>
+                            <div class="stat-value" id="filtered-users">0</div>
+                        </div>
+                    </div>
+
+                    <div class="users-table-container">
+                        <table class="users-table">
+                            <thead>
+                                <tr>
+                                    <th>名前</th>
+                                    <th>レベル</th>
+                                    <th>職種</th>
+                                    <th>所属</th>
+                                    <th>都道府県</th>
+                                    <th>経験年数</th>
+                                    <th>累積経験値</th>
+                                    <th>参加回数</th>
+                                    <th>最終参加日</th>
+                                    <th>保有アビリティ</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table-body">
+                                <tr>
+                                    <td colspan="11" style="text-align: center; padding: 40px;">読み込み中...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- アビリティ付与セクション -->
+                <section class="ability-grant-section">
+                    <h2>📜 アビリティを付与</h2>
+                    <div class="ability-grant-content">
+                        <div class="ability-form">
+                            <div class="form-group">
+                                <label for="ability-user-select">ユーザー選択:</label>
+                                <select id="ability-user-select" class="input-field">
+                                    <option value="">ユーザーを選択</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="ability-name">アビリティ名:</label>
+                                <input type="text" id="ability-name" class="input-field" placeholder="例：アシスタント">
+                            </div>
+                            <div class="form-group">
+                                <label for="ability-description">説明（任意）:</label>
+                                <input type="text" id="ability-description" class="input-field" placeholder="アビリティの説明">
+                            </div>
+                            <button id="grant-ability-btn" class="btn btn-primary">アビリティを付与</button>
+                        </div>
+
+                        <div class="ability-reference">
+                            <h3>━━ 参考：推奨アビリティ ━━━━</h3>
+                            <ul>
+                                <li><strong>Lv30以上:</strong> アシスタント</li>
+                                <li><strong>Lv40以上:</strong> アシスタントリーダー</li>
+                                <li><strong>Lv50以上:</strong> EYL認定セラピスト</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- パスワード管理セクション -->
+            <div id="admin-panel">
+                <!-- パスワード生成セクション -->
+                <section class="generate-section">
+                    <h2>🎲 本日のパスワード生成</h2>
+                    <div class="generate-content">
+                        <div class="password-generation-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>【研修会タイプ】</label>
+                                    <div class="radio-group">
+                                        <label class="radio-label">
+                                            <input type="radio" name="training-type" value="歩行" checked>
+                                            <span>歩行系研修会</span>
+                                        </label>
+                                        <label class="radio-label">
+                                            <input type="radio" name="training-type" value="手">
+                                            <span>手系研修会</span>
+                                        </label>
+                                        <label class="radio-label">
+                                            <input type="radio" name="training-type" value="なし">
+                                            <span>設定なし（その他）</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>【経験値】</label>
+                                    <div class="radio-group">
+                                        <label class="radio-label">
+                                            <input type="radio" name="exp-amount" value="100" checked>
+                                            <span>平日勉強会（100P）</span>
+                                        </label>
+                                        <label class="radio-label">
+                                            <input type="radio" name="exp-amount" value="300">
+                                            <span>一日研修会（300P）</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="password-validity">有効期限:</label>
+                                    <select id="password-validity" class="input-field">
+                                        <option value="1">1日</option>
+                                        <option value="2">2日</option>
+                                        <option value="7">7日</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="current-password-display">
+                            <div class="password-status">
+                                <span id="password-status-text">パスワードが生成されていません</span>
+                            </div>
+                            <div class="current-password-box" id="current-password-box" style="display: none;">
+                                <div class="password-label">本日のパスワード:</div>
+                                <div class="password-value" id="current-password-value">----</div>
+                                <div class="password-info">
+                                    <small>研修会タイプ: <span id="current-training-type">-</span></small><br>
+                                    <small>経験値: <span id="current-exp-amount">-</span>P</small><br>
+                                    <small>生成日時: <span id="generation-time">--</span></small><br>
+                                    <small>有効期限: <span id="expiry-time">--</span></small><br>
+                                    <div class="time-remaining" id="time-remaining-display">
+                                        <strong>残り時間: <span id="time-remaining">計算中...</span></strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="generate-controls">
+                            <button id="generate-password" class="btn btn-success">🎲 パスワード生成</button>
+                            <button id="extend-time" class="btn btn-primary" style="display: none;">⏰ 2時間延長</button>
+                            <button id="refresh-status" class="btn btn-info">🔄 状況を更新</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 使用状況確認セクション -->
+                <section class="usage-section">
+                    <h2>📊 使用状況</h2>
+                    <div class="usage-content">
+                        <div class="usage-stats">
+                            <div class="stat-item">
+                                <div class="stat-label">パスワード使用者数</div>
+                                <div class="stat-value" id="usage-count">0</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">最後の使用時刻</div>
+                                <div class="stat-value" id="last-usage">未使用</div>
+                            </div>
+                        </div>
+                        <div class="usage-controls">
+                            <button id="reset-usage" class="btn btn-secondary">🗑️ 使用履歴をリセット</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 救済措置用パスワード生成セクション -->
+                <section class="rescue-section">
+                    <h2>🆘 救済措置用パスワード生成</h2>
+                    <div class="rescue-content">
+                        <div class="rescue-description">
+                            <p>遅刻者・欠席者・特別イベント用に、カスタム経験値数のパスワードを生成できます。</p>
+                        </div>
+
+                        <!-- 経験値付与の参考表 -->
+                        <div class="exp-reference-table">
+                            <div class="exp-reference-header">📊 経験値付与の参考</div>
+                            <div class="exp-reference-body">
+                                <div class="exp-category">
+                                    <div class="exp-category-title">通常研修会:</div>
+                                    <div class="exp-item">
+                                        <span class="exp-item-name">EYL主催1日研修会:</span>
+                                        <span class="exp-item-value">300P</span>
+                                    </div>
+                                    <div class="exp-item">
+                                        <span class="exp-item-name">EYL以外の研修会:</span>
+                                        <span class="exp-item-value">50P（一律50P）</span>
+                                    </div>
+                                </div>
+
+                                <div class="exp-category">
+                                    <div class="exp-category-title">特別研修:</div>
+                                    <div class="exp-item">
+                                        <span class="exp-item-name">BOBATH Introductory Module (11.5h):</span>
+                                        <span class="exp-item-value">400P</span>
+                                    </div>
+                                    <div class="exp-item">
+                                        <span class="exp-item-name">BOBATH Basic course (120h):</span>
+                                        <span class="exp-item-value">2000P</span>
+                                    </div>
+                                    <div class="exp-item">
+                                        <span class="exp-item-name">BOBATH関連（その他）:</span>
+                                        <span class="exp-item-value">100P（一律100P）</span>
+                                    </div>
+                                </div>
+
+                                <div class="exp-category">
+                                    <div class="exp-category-title">貢献活動:</div>
+                                    <div class="exp-item">
+                                        <span class="exp-item-name">講義担当・実技提示:</span>
+                                        <span class="exp-item-value">500P</span>
+                                    </div>
+                                    <div class="exp-item">
+                                        <span class="exp-item-name">アシスタント:</span>
+                                        <span class="exp-item-value">300P</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="rescue-form">
+                            <div class="form-group">
+                                <label for="rescue-points">付与経験値:</label>
+                                <input type="number" id="rescue-points" min="0" max="999999" step="100" value="50" placeholder="例: 5000" class="input-field">
+                                <span class="input-hint">経験値（0-999999）</span>
+                            </div>
+                            <div class="form-group">
+                                <label>【研修会タイプ】</label>
+                                <div class="radio-group">
+                                    <label class="radio-label">
+                                        <input type="radio" name="rescue-training-type" value="歩行">
+                                        <span>歩行系</span>
+                                    </label>
+                                    <label class="radio-label">
+                                        <input type="radio" name="rescue-training-type" value="手">
+                                        <span>手系</span>
+                                    </label>
+                                    <label class="radio-label">
+                                        <input type="radio" name="rescue-training-type" value="なし" checked>
+                                        <span>設定なし</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <button id="generate-rescue-password" class="btn btn-warning">🎯 救済パスワードを生成</button>
+                        </div>
+                        <div class="rescue-display" id="rescue-display" style="display: none;">
+                            <div class="rescue-password-box">
+                                <div class="rescue-password-label">
+                                    <span id="rescue-points-display">50</span>経験値用パスワード
+                                </div>
+                                <div class="rescue-password-value" id="rescue-password-value">----</div>
+                                <div class="rescue-note">
+                                    <small>生成時刻: <span id="rescue-generation-time">--</span></small><br>
+                                    <small>このパスワードは<strong id="rescue-points-display-2">50</strong>経験値のみ付与されます（スタンプなし）</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="rescue-examples">
+                            <h3>💡 使用例:</h3>
+                            <ul>
+                                <li><strong>50経験値:</strong> 遅刻者用（半分の経験値）</li>
+                                <li><strong>150経験値:</strong> 特別イベント参加者用</li>
+                                <li><strong>100経験値:</strong> 欠席者の救済用</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- 参加者確認セクション -->
+            <section class="verification-section">
+                <h2>✅ 参加者確認</h2>
+                <div class="verification-content">
+                    <p>受講生がパスワードを正しく入力したかの確認方法:</p>
+                    <ul>
+                        <li>📱 受講生のアプリで経験値とスタンプが増加していることを確認</li>
+                        <li>🎉 「認証成功！」メッセージが表示されることを確認</li>
+                        <li>⚠️ 2回目以降は「既に使用済みです」と表示される</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- 使用方法説明 -->
+            <section class="help-section">
+                <h2>📖 管理者ガイド</h2>
+                <div class="help-content">
+                    <h3>🎯 新しいシンプルシステム:</h3>
+                    <ul>
+                        <li><strong>固定パスワード:</strong> 「1580」のみ使用</li>
+                        <li><strong>QRコード不要:</strong> 手動入力でスマート管理</li>
+                        <li><strong>確実な制御:</strong> 管理者が直接確認しながら入力</li>
+                        <li><strong>重複防止:</strong> 1人1回のみ自動制限</li>
+                    </ul>
+
+                    <h3>🚀 運用フロー:</h3>
+                    <ol>
+                        <li><strong>研修開始時:</strong> 受講生にスタンプアプリを開いてもらう</li>
+                        <li><strong>管理者が確認:</strong> 各受講生のアプリを直接確認</li>
+                        <li><strong>パスワード入力:</strong> 管理者が「1580」を入力</li>
+                        <li><strong>成功確認:</strong> 経験値・スタンプ付与を確認</li>
+                    </ol>
+
+                    <h3>🔒 セキュリティ:</h3>
+                    <ul>
+                        <li>パスワードは管理者のみが知っている</li>
+                        <li>各受講生は1回のみ利用可能</li>
+                        <li>管理者が直接確認するため確実</li>
+                    </ul>
+
+                    <h3>❓ トラブルシューティング:</h3>
+                    <ul>
+                        <li><strong>「既に使用済み」エラー:</strong> その受講生は既にポイント獲得済み</li>
+                        <li><strong>「無効なパスワード」エラー:</strong> 入力が間違っている（正しくは「1580」）</li>
+                        <li><strong>アプリが動かない:</strong> ブラウザの再読み込みを試す</li>
+                    </ul>
+                </div>
+            </section>
+        </main>
+
+        <div id="message" class="message"></div>
+
+        <!-- アビリティ管理モーダル -->
+        <div id="ability-management-modal" class="modal" style="display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center;">
+            <div class="modal-content" style="background-color: white; padding: 30px; border-radius: 10px; width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                <h2>🏅 <span id="ability-modal-username">-</span> のアビリティ管理</h2>
+
+                <div class="ability-list-section">
+                    <h3>現在のアビリティ:</h3>
+                    <div id="current-abilities-list">
+                        <p style="color: #999;">アビリティがありません</p>
+                    </div>
+                </div>
+
+                <div class="ability-add-section">
+                    <h3>新しいアビリティを追加:</h3>
+                    <div class="form-group">
+                        <input type="text" id="modal-ability-name" class="input-field" placeholder="アビリティ名">
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="modal-ability-description" class="input-field" placeholder="説明（任意）">
+                    </div>
+                    <button id="modal-add-ability-btn" class="btn btn-primary">追加</button>
+                </div>
+
+                <div class="modal-buttons">
+                    <button id="close-ability-modal-btn" class="btn btn-secondary">閉じる</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>

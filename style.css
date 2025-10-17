@@ -1,0 +1,869 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* ドラクエ風フォント */
+body {
+    font-family: 'メイリオ', 'MS Gothic', 'ヒラギノ角ゴ Pro', monospace;
+    background: linear-gradient(135deg, #001133 0%, #003366 100%);
+    min-height: 100vh;
+    color: #FFFFFF;
+}
+
+/* モーダルスタイル（ドラクエ風） */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: #001133;
+    border: 4px solid #FFFFFF;
+    border-radius: 8px;
+    padding: 30px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+.modal-content h2 {
+    color: #FFFF00;
+    margin-bottom: 10px;
+    font-size: 24px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.modal-content > p {
+    color: #FFFFFF;
+    margin-bottom: 20px;
+    line-height: 1.8;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #FFFFFF;
+}
+
+.required {
+    color: #FF6666;
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group select {
+    width: 100%;
+    padding: 12px;
+    border: 3px solid #FFFFFF;
+    border-radius: 4px;
+    font-size: 16px;
+    background: #000033;
+    color: #FFFFFF;
+    font-family: 'メイリオ', 'MS Gothic', monospace;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    background: #000066;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+.input-hint {
+    display: inline-block;
+    margin-left: 8px;
+    color: #AAAAAA;
+    font-size: 14px;
+}
+
+.container {
+    max-width: 400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* ヘッダー（ドラクエ風メッセージウィンドウ） */
+header {
+    text-align: center;
+    background: #000033;
+    border: 4px solid #FFFFFF;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+    position: relative;
+}
+
+/* トップヘッダー */
+.top-header {
+    position: relative;
+    width: 100%;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+}
+
+/* 音量ボタン（右上固定） */
+.volume-button {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: rgba(0, 0, 51, 0.6);
+    border: 2px solid #666666;
+    border-radius: 50%;
+    width: 45px;
+    height: 45px;
+    font-size: 22px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    z-index: 1000;
+}
+
+.volume-button:hover {
+    background: rgba(0, 51, 170, 0.8);
+    border-color: #FFFFFF;
+    transform: scale(1.1);
+}
+
+.volume-button:active {
+    transform: scale(0.95);
+}
+
+/* アプリタイトル */
+.app-title-center {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    padding: 0 20px;
+    padding-right: 65px; /* 音量ボタンの幅分のスペースを確保 */
+}
+
+/* ★の行（左揃え） */
+.star-line {
+    display: flex;
+    justify-content: flex-start;
+    margin-bottom: 5px;
+}
+
+.star-display {
+    color: #FFD700;
+    font-size: 32px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-shadow: 0 0 15px rgba(255, 215, 0, 0.9), 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* アプリ名の行（中央揃え） */
+.app-name-line {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.app-icon {
+    font-size: 28px;
+}
+
+.app-name {
+    color: #FFFF00;
+    font-size: 24px;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* レベル情報（ドラクエ風ステータス） */
+.level-info {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 10px;
+    background: rgba(0, 0, 51, 0.6);
+    padding: 15px;
+    border-radius: 8px;
+    border: 2px solid #666666;
+}
+
+.level-badge {
+    background: linear-gradient(135deg, #0066CC 0%, #0033AA 100%);
+    color: #FFFF00;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 18px;
+    border: 3px solid #FFFFFF;
+    box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.3);
+    text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.5);
+}
+
+.exp-info {
+    flex: 1;
+    max-width: 300px;
+}
+
+.exp-text {
+    font-size: 14px;
+    color: #FFFFFF;
+    margin-bottom: 5px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.exp-bar-container {
+    width: 100%;
+    height: 20px;
+    background: #333333;
+    border: 2px solid #FFFFFF;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.exp-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #00FF00 0%, #00CC00 100%);
+    transition: width 0.3s ease;
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.3);
+}
+
+/* タブナビゲーション（ドラクエ風コマンドウィンドウ） */
+.tab-navigation {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    background: #000033;
+    border: 4px solid #FFFFFF;
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+.tab-button {
+    flex: 1;
+    padding: 12px 20px;
+    border: 3px solid #666666;
+    background: #000066;
+    color: #FFFFFF;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.tab-button:hover {
+    background: #0033AA;
+    border-color: #FFFFFF;
+}
+
+.tab-button.active {
+    background: linear-gradient(135deg, #0066CC 0%, #0033AA 100%);
+    color: #FFFF00;
+    border: 3px solid #FFFFFF;
+    box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* タブコンテンツ */
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* メインセクション（ドラクエ風メッセージウィンドウ） */
+main section {
+    background: #000033;
+    border: 4px solid #FFFFFF;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+h2 {
+    color: #FFFF00;
+    margin-bottom: 15px;
+    text-align: center;
+    font-size: 20px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.password-section {
+    text-align: center;
+}
+
+/* ドラクエ風ボタン */
+.btn {
+    background: linear-gradient(135deg, #0066CC 0%, #0033AA 100%);
+    color: #FFFFFF;
+    border: 3px solid #FFFFFF;
+    padding: 12px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    transition: all 0.2s ease;
+    margin: 10px 5px;
+    box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.3);
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.btn:hover {
+    background: linear-gradient(135deg, #0088FF 0%, #0055DD 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(255, 255, 255, 0.3), inset 0 -3px 0 rgba(0, 0, 0, 0.3);
+}
+
+.btn:active {
+    transform: translateY(0);
+    box-shadow: inset 0 3px 0 rgba(0, 0, 0, 0.5);
+}
+
+/* スタンプカード */
+.stamp-card {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin: 20px 0;
+}
+
+.stamp {
+    width: 70px;
+    height: 70px;
+    border: 3px solid #666666;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    transition: all 0.2s ease;
+    background: #000066;
+}
+
+.stamp.filled {
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+    border: 3px solid #FFFFFF;
+    color: #000000;
+    animation: stampAnimation 0.4s ease;
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+}
+
+@keyframes stampAnimation {
+    0% { transform: scale(0.7) rotate(-90deg); opacity: 0; }
+    50% { transform: scale(1.1) rotate(5deg); }
+    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+.stamp-info {
+    text-align: center;
+    color: #FFFFFF;
+    margin-top: 10px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* クーポン（ドラクエ風お知らせ） */
+.coupon {
+    text-align: center;
+    background: linear-gradient(135deg, #CC3333 0%, #AA0000 100%);
+    color: #FFFF00;
+    padding: 30px;
+    border: 4px solid #FFFFFF;
+    border-radius: 8px;
+    margin: 20px 0;
+    box-shadow: 0 0 20px rgba(255, 255, 0, 0.5);
+}
+
+.coupon h3 {
+    font-size: 24px;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.coupon-code {
+    background: rgba(0, 0, 0, 0.5);
+    border: 2px solid #FFFF00;
+    border-radius: 8px;
+    padding: 15px;
+    margin: 15px 0;
+    font-family: monospace;
+    font-size: 18px;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+/* メッセージウィンドウ（ドラクエ風） */
+.message {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #000033;
+    color: #FFFFFF;
+    padding: 30px 40px;
+    border: 4px solid #FFFFFF;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 18px;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    max-width: 80%;
+    text-align: center;
+    line-height: 1.8;
+    box-shadow: 0 0 30px rgba(255, 255, 255, 0.5);
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    white-space: pre-line;
+    pointer-events: none; /* 【修正】非表示時はクリックイベントを通過させる */
+}
+
+.message.show {
+    opacity: 1;
+    animation: messageAppear 0.2s ease;
+    pointer-events: auto; /* 【修正】表示時のみクリックイベントを有効にする */
+}
+
+@keyframes messageAppear {
+    0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+    100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+
+.message.success {
+    color: #FFFF00;
+    border-color: #FFFF00;
+    box-shadow: 0 0 30px rgba(255, 255, 0, 0.8);
+}
+
+.message.error {
+    color: #FF6666;
+    border-color: #FF6666;
+    box-shadow: 0 0 30px rgba(255, 102, 102, 0.8);
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #666666 0%, #444444 100%);
+    margin: 5px;
+}
+
+.btn-secondary:hover {
+    background: linear-gradient(135deg, #888888 0%, #666666 100%);
+}
+
+.password-input-area {
+    margin: 20px 0;
+}
+
+.password-instructions {
+    margin-bottom: 20px;
+    color: #FFFFFF;
+    line-height: 1.8;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.password-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
+}
+
+.password-input {
+    width: 100%;
+    max-width: 320px;
+    padding: 15px 20px;
+    border: 3px solid #FFFFFF;
+    border-radius: 8px;
+    font-size: 18px;
+    outline: none;
+    transition: all 0.2s ease;
+    text-align: center;
+    background: #000066;
+    color: #FFFFFF;
+    font-family: 'メイリオ', 'MS Gothic', monospace;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.password-input:focus {
+    background: #0033AA;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #0066CC 0%, #0033AA 100%);
+    border: 3px solid #FFFFFF;
+    padding: 15px 30px;
+    border-radius: 8px;
+    color: #FFFFFF;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.3);
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #0088FF 0%, #0055DD 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(255, 255, 255, 0.3), inset 0 -3px 0 rgba(0, 0, 0, 0.3);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+    box-shadow: inset 0 3px 0 rgba(0, 0, 0, 0.5);
+}
+
+.status-display {
+    background: rgba(0, 0, 51, 0.8);
+    border: 2px solid #666666;
+    border-radius: 8px;
+    padding: 10px;
+    margin: 10px 0;
+    font-family: 'メイリオ', 'MS Gothic', monospace;
+    font-size: 14px;
+    color: #FFFFFF;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.password-expiry-display {
+    background: rgba(0, 100, 200, 0.3);
+    border: 2px solid #0066CC;
+    border-radius: 8px;
+    padding: 8px;
+    margin: 10px 0;
+    text-align: center;
+    color: #FFFFFF;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.password-expiry-display.warning {
+    background: rgba(200, 150, 0, 0.3);
+    border-color: #FFAA00;
+    color: #FFFF00;
+}
+
+.password-expiry-display.expired {
+    background: rgba(200, 0, 0, 0.3);
+    border-color: #CC0000;
+    color: #FF6666;
+}
+
+/* フッター */
+.footer {
+    text-align: center;
+    padding: 15px 0;
+    margin-top: 30px;
+}
+
+.admin-link-footer {
+    display: inline-block;
+    color: #666666;
+    text-decoration: none;
+    font-size: 11px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    background: transparent;
+    transition: all 0.2s ease;
+    opacity: 0.4;
+}
+
+.admin-link-footer:hover {
+    opacity: 0.8;
+    background: rgba(255, 255, 255, 0.1);
+    color: #AAAAAA;
+}
+
+/* ステータス画面（ドラクエ風ステータス画面） */
+.status-section {
+    padding: 20px;
+}
+
+.status-card {
+    background: linear-gradient(135deg, #000033 0%, #001155 100%);
+    border: 4px solid #FFFFFF;
+    border-radius: 8px;
+    padding: 25px;
+    margin-top: 20px;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+.status-header {
+    text-align: center;
+    margin-bottom: 25px;
+    padding-bottom: 20px;
+    border-bottom: 3px solid #666666;
+}
+
+.status-name {
+    font-size: 28px;
+    font-weight: bold;
+    color: #FFFF00;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.status-title {
+    display: inline-block;
+    background: linear-gradient(135deg, #CC3333 0%, #AA0000 100%);
+    color: #FFFF00;
+    padding: 8px 20px;
+    border: 2px solid #FFFFFF;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.status-level-display {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: rgba(0, 0, 51, 0.6);
+    border: 3px solid #666666;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.status-level-badge {
+    background: linear-gradient(135deg, #0066CC 0%, #0033AA 100%);
+    color: #FFFF00;
+    border: 3px solid #FFFFFF;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    min-width: 120px;
+    box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.3);
+}
+
+.level-label {
+    font-size: 14px;
+    opacity: 0.9;
+    margin-bottom: 5px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.level-number {
+    font-size: 48px;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.status-exp-details {
+    flex: 1;
+}
+
+.exp-detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 2px solid #333333;
+}
+
+.exp-detail-row:last-child {
+    border-bottom: none;
+}
+
+.exp-detail-row .label {
+    color: #AAAAAA;
+    font-size: 14px;
+}
+
+.exp-detail-row .value {
+    font-weight: bold;
+    color: #FFFFFF;
+    font-size: 16px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.status-details {
+    background: rgba(0, 0, 51, 0.6);
+    border: 3px solid #666666;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.status-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 2px solid #333333;
+}
+
+.status-row:last-child {
+    border-bottom: none;
+}
+
+.status-label {
+    color: #AAAAAA;
+    font-size: 14px;
+}
+
+.status-value {
+    font-weight: bold;
+    color: #FFFFFF;
+    font-size: 15px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* レスポンシブ */
+@media (max-width: 480px) {
+    .container {
+        padding: 10px;
+    }
+
+    .stamp-card {
+        gap: 10px;
+    }
+
+    .stamp {
+        width: 60px;
+        height: 60px;
+        font-size: 25px;
+    }
+
+    .status-level-display {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .status-level-badge {
+        width: 100%;
+    }
+
+    .message {
+        font-size: 16px;
+        padding: 25px 30px;
+    }
+}
+
+/* クラス選択モーダル */
+.class-selection-content {
+    max-width: 700px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.class-selection-description {
+    text-align: center;
+    color: #FFFFFF;
+    line-height: 1.8;
+    margin-bottom: 25px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.class-options {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin: 25px 0;
+}
+
+.class-option {
+    background: linear-gradient(135deg, #000066 0%, #000033 100%);
+    border: 3px solid #666666;
+    border-radius: 8px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.class-option:hover {
+    border-color: #FFFFFF;
+    background: linear-gradient(135deg, #0033AA 0%, #001166 100%);
+    transform: translateY(-5px);
+    box-shadow: 0 5px 20px rgba(255, 255, 255, 0.4);
+}
+
+.class-icon {
+    font-size: 48px;
+    margin-bottom: 10px;
+}
+
+.class-name {
+    font-size: 22px;
+    font-weight: bold;
+    color: #FFFF00;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.class-description {
+    color: #FFFFFF;
+    line-height: 1.6;
+    font-size: 14px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.class-description strong {
+    color: #FFD700;
+}
+
+.class-selection-note {
+    text-align: center;
+    color: #FF6666;
+    font-size: 14px;
+    margin-top: 20px;
+    padding: 10px;
+    background: rgba(255, 102, 102, 0.2);
+    border: 2px solid #FF6666;
+    border-radius: 8px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 480px) {
+    .class-selection-content {
+        padding: 20px;
+    }
+
+    .class-option {
+        padding: 15px;
+    }
+
+    .class-icon {
+        font-size: 36px;
+    }
+
+    .class-name {
+        font-size: 18px;
+    }
+
+    .class-description {
+        font-size: 13px;
+    }
+}
+
+/* ★表示スタイル */
+.star-display {
+    color: #FFD700;  /* ゴールド色 */
+    font-size: 1.2em;
+    margin-left: 5px;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.8), 2px 2px 4px rgba(0, 0, 0, 0.8);
+    display: inline-block;
+}
