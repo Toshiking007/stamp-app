@@ -1515,6 +1515,10 @@ class StampApp {
                 console.warn('⚠️ [無料券デバッグ] userIdがnullのためFirestoreに保存されません');
             }
 
+            // ★ 画面を更新して無料券を表示
+            this.updateFreeTicketsDisplay();
+            console.log('✅ [無料券デバッグ] 画面表示を更新しました');
+
             console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
         } catch (error) {
@@ -2371,3 +2375,36 @@ if ('serviceWorker' in navigator) {
 } else {
     console.log('ℹ️ このブラウザはService Workerに対応していません');
 }
+
+// ============================================
+// BGM停止処理（画面を離れたら音楽を確実に停止）
+// ============================================
+
+// 1. ページの可視性が変わったとき（タブ切り替え）
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        // ページが非表示（バックグラウンド）になった
+        soundManager.stopBGM();
+        console.log('🔇 BGM停止：ページがバックグラウンドになりました');
+    }
+});
+
+// 2. ページを完全に離れるとき（ページ遷移・閉じる）
+window.addEventListener('beforeunload', () => {
+    soundManager.stopBGM();
+    console.log('🔇 BGM停止：ページを離れます');
+});
+
+// 3. ウィンドウがフォーカスを失ったとき
+window.addEventListener('blur', () => {
+    soundManager.stopBGM();
+    console.log('🔇 BGM停止：ウィンドウがフォーカスを失いました');
+});
+
+// 4. ページが一時停止されたとき（モバイル対応）
+window.addEventListener('pagehide', () => {
+    soundManager.stopBGM();
+    console.log('🔇 BGM停止：ページが一時停止されました');
+});
+
+console.log('✅ BGM停止イベントリスナー登録完了');
