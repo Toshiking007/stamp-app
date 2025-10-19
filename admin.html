@@ -92,13 +92,14 @@
                                     <th>参加回数</th>
                                     <th>最終参加日</th>
                                     <th>保有アビリティ</th>
+                                    <th>無料券</th>
                                     <th>アビリティ管理</th>
                                     <th>削除</th>
                                 </tr>
                             </thead>
                             <tbody id="users-table-body">
                                 <tr>
-                                    <td colspan="12" style="text-align: center; padding: 40px;">読み込み中...</td>
+                                    <td colspan="13" style="text-align: center; padding: 40px;">読み込み中...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -346,6 +347,22 @@
                         <li>🎉 「認証成功！」メッセージが表示されることを確認</li>
                         <li>⚠️ 2回目以降は「既に使用済みです」と表示される</li>
                     </ul>
+                </div>
+            </section>
+
+            <!-- 無料券パスワード検証セクション -->
+            <section class="ticket-verification-section">
+                <h2>🎫 無料券パスワード検証</h2>
+                <div class="ticket-verification-content">
+                    <p>受講生が持っている無料券パスワードが有効かどうかを確認できます。</p>
+                    <div class="ticket-verification-form">
+                        <div class="form-group">
+                            <label for="ticket-password-input">パスワードを入力:</label>
+                            <input type="text" id="ticket-password-input" class="input-field" placeholder="6桁のパスワードを入力">
+                        </div>
+                        <button id="verify-ticket-btn" class="btn btn-primary" onclick="verifyFreeTicket()">検証する</button>
+                    </div>
+                    <div id="ticket-verification-result" class="ticket-verification-result"></div>
                 </div>
             </section>
 

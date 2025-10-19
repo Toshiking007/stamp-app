@@ -176,9 +176,10 @@
         </header>
 
         <!-- タブナビゲーション -->
-        <nav class="tab-navigation">
+        <nav class="tab-navigation nav-buttons">
             <button class="tab-button active" onclick="switchTab('home')">🏠 ホーム</button>
             <button class="tab-button" onclick="switchTab('status')">📊 ステータス</button>
+            <button class="tab-button" onclick="openGuideModal()">📖 ユーザーズガイド</button>
         </nav>
 
         <main>
@@ -221,6 +222,14 @@
                     <p>次回のお会計が1000円OFF!</p>
                     <div class="coupon-code">クーポンコード: STAMP50</div>
                     <button id="use-coupon" class="btn">クーポンを使用</button>
+                </div>
+            </section>
+
+            <!-- 無料券セクション -->
+            <section class="free-ticket-section" id="freeTicketSection" style="display: none;">
+                <h2>🎫 利用可能なクーポン</h2>
+                <div id="free-tickets-container">
+                    <!-- 無料券リストがここに動的に表示されます -->
                 </div>
             </section>
             </div>
@@ -293,9 +302,88 @@
                     </div>
                 </section>
             </div>
+
         </main>
 
         <div id="message" class="message"></div>
+
+        <!-- 無料券パスワード表示モーダル -->
+        <div id="free-ticket-password-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h2>🎁 一日研修会無料券</h2>
+                <p>以下のパスワードを事前申込み時に記載してください</p>
+                <div class="password-display-box">
+                    <div class="password-label">パスワード</div>
+                    <div class="password-value" id="free-ticket-password-display">------</div>
+                </div>
+                <p class="password-note">※このパスワードは1回のみ使用できます</p>
+                <p class="password-note" style="display: none;">レベル<span id="free-ticket-level-display">--</span>到達記念</p>
+                <div class="modal-buttons">
+                    <button onclick="stampApp.copyFreeTicketPassword()" class="btn btn-primary">コピー</button>
+                    <button onclick="stampApp.closeFreeTicketPasswordModal()" class="btn btn-secondary">閉じる</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ユーザーズガイドモーダル -->
+        <div id="guide-modal" class="modal" style="display: none;">
+            <div class="modal-content guide-modal-content">
+                <button class="modal-close-btn" onclick="closeGuideModal()">&times;</button>
+                <h2 style="font-size: 18px; margin-bottom: 15px;">📖 My Level App ユーザーズガイド</h2>
+
+                <div class="guide-content">
+                    <div class="guide-item">
+                        <h3 style="font-size: 16px; margin: 10px 0 5px 0;">■ My Level Appとは？</h3>
+                        <p style="font-size: 14px; line-height: 1.5; margin: 5px 0;">研修会に参加して経験値を貯め、レベルアップして成長していくアプリです。</p>
+                    </div>
+
+                    <div class="guide-item">
+                        <h3 style="font-size: 16px; margin: 10px 0 5px 0;">■ 基本的な使い方</h3>
+                        <ol style="font-size: 14px; line-height: 1.5; margin: 5px 0; padding-left: 20px;">
+                            <li>研修会参加時にパスワードを受け取る</li>
+                            <li>アプリで入力して経験値を獲得</li>
+                            <li>レベルアップで称号が変わる</li>
+                        </ol>
+                    </div>
+
+                    <div class="guide-item">
+                        <h3 style="font-size: 16px; margin: 10px 0 5px 0;">■ クーポンシステム</h3>
+                        <div class="guide-subsection" style="margin: 5px 0;">
+                            <h4 style="font-size: 14px; margin: 5px 0;">💰 1000円OFFクーポン</h4>
+                            <p style="font-size: 13px; line-height: 1.4; margin: 3px 0;">- スタンプを3つ集めると獲得できます</p>
+                        </div>
+                        <div class="guide-subsection" style="margin: 5px 0;">
+                            <h4 style="font-size: 14px; margin: 5px 0;">🎁 一日研修会無料券</h4>
+                            <p style="font-size: 13px; line-height: 1.4; margin: 3px 0;">- レベル10ごとに配布されます（Lv10, 20, 30...）</p>
+                            <p style="font-size: 13px; line-height: 1.4; margin: 3px 0;">- 使用すると6桁のパスワードが発行されます</p>
+                        </div>
+                    </div>
+
+                    <div class="guide-item">
+                        <h3 style="font-size: 16px; margin: 10px 0 5px 0;">■ レベルアップシステム</h3>
+                        <div id="guide-level-system" class="level-system-guide">
+                            <!-- 動的に生成されます -->
+                        </div>
+                    </div>
+
+                    <div class="guide-item">
+                        <h3 style="font-size: 16px; margin: 10px 0 5px 0;">■ 特別な機能</h3>
+                        <div class="guide-subsection" style="margin: 5px 0;">
+                            <h4 id="guide-class-system-title" style="font-size: 14px; margin: 5px 0;">Lv20到達：？？？</h4>
+                            <p id="guide-class-system-desc" style="font-size: 13px; line-height: 1.4; margin: 3px 0;">専門分野を選択できる特別な機能が解放されます</p>
+                        </div>
+                        <div class="guide-subsection" style="margin: 5px 0;">
+                            <h4 id="guide-ability-title" style="font-size: 14px; margin: 5px 0;">Lv30以上：？？？</h4>
+                            <p id="guide-ability-desc" style="font-size: 13px; line-height: 1.4; margin: 3px 0;">管理者から特別なアビリティが付与されます</p>
+                        </div>
+                        <div class="guide-subsection" style="margin: 5px 0;">
+                            <h4 id="guide-star-title" style="font-size: 14px; margin: 5px 0;">Lv60以上：？？？</h4>
+                            <p id="guide-star-desc" style="font-size: 13px; line-height: 1.4; margin: 3px 0;">名前の横に特別な印が表示されます</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- フッター - 管理者リンク -->
         <footer class="footer">

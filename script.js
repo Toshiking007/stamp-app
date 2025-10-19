@@ -172,6 +172,9 @@ class StampApp {
         this.selectedClass = localStorage.getItem('selectedClass') || null;
         this.classChangedAt = localStorage.getItem('classChangedAt') || null;
 
+        // 無料券システム関連
+        this.freeTickets = JSON.parse(localStorage.getItem('freeTickets')) || [];
+
         // 固定パスワード（フォールバック用）
         this.FALLBACK_PASSWORD = '1580';
 
@@ -319,7 +322,10 @@ class StampApp {
     // クラスを選択して保存
     async selectClass(className) {
         try {
-            console.log('🎓 クラス選択:', className);
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log('🎓 [クラス選択] クラス選択処理開始');
+            console.log('🔍 [クラス選択] ユーザーID:', this.userId);
+            console.log('🔍 [クラス選択] 選択されたクラス:', className);
 
             this.selectedClass = className;
             this.classChangedAt = new Date().toISOString();
@@ -327,24 +333,60 @@ class StampApp {
             // LocalStorageに保存
             localStorage.setItem('selectedClass', className);
             localStorage.setItem('classChangedAt', this.classChangedAt);
+            console.log('✅ [クラス選択] LocalStorageに保存完了');
 
             // Firestoreに保存
             if (this.userId) {
-                await db.collection('users').doc(this.userId).update({
-                    selectedClass: className,
-                    classChangedAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
+                console.log('🔍 [クラス選択] Firestoreパス: users/' + this.userId);
+                console.log('🔍 [クラス選択] ドキュメント存在確認中...');
+
+                // ドキュメントが存在するか確認
+                const docRef = db.collection('users').doc(this.userId);
+                const doc = await docRef.get();
+
+                console.log('🔍 [クラス選択] ドキュメント存在:', doc.exists);
+
+                if (doc.exists) {
+                    // ドキュメントが存在する場合はupdate
+                    console.log('🔍 [クラス選択] updateメソッドで更新中...');
+                    await docRef.update({
+                        selectedClass: className,
+                        classChangedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    console.log('✅ [クラス選択] Firestoreに更新完了（update）');
+                } else {
+                    // ドキュメントが存在しない場合はsetで作成
+                    console.warn('⚠️ [クラス選択] ドキュメントが存在しないため、setで作成します');
+                    await docRef.set({
+                        selectedClass: className,
+                        classChangedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        level: this.level || 1,
+                        exp: this.exp || 0,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+                    console.log('✅ [クラス選択] Firestoreに作成完了（set with merge）');
+                }
+            } else {
+                console.warn('⚠️ [クラス選択] ユーザーIDが未設定のため、Firestoreに保存できません');
             }
 
             this.hideClassSelectionModal();
             this.showMessage(`🎓 ${className}を選択しました！\n\n研修会でのボーナス経験値が有効になります。`, 'success');
-            console.log('✅ クラス選択完了:', className);
+            console.log('✅ [クラス選択] クラス選択完了:', className);
 
             // ステータス画面を更新
-            this.updateStatusScreen();
+            await this.updateStatusScreen();
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
         } catch (error) {
-            console.error('❌ クラス選択エラー:', error);
+            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.error('❌ [クラス選択] クラス選択エラー発生！');
+            console.error('❌ [クラス選択] エラーメッセージ:', error.message);
+            console.error('❌ [クラス選択] エラーコード:', error.code);
+            console.error('❌ [クラス選択] エラースタック:', error.stack);
+            console.error('❌ [クラス選択] ユーザーID:', this.userId);
+            console.error('❌ [クラス選択] 選択されたクラス:', className);
+            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
             this.showMessage('クラス選択に失敗しました: ' + error.message, 'error');
         }
     }
@@ -580,6 +622,18 @@ class StampApp {
                 this.updateHomeScreen();
             } catch (error) {
                 console.warn('⚠️ ホーム画面更新エラー:', error);
+            }
+
+            try {
+                this.updateFreeTicketsDisplay();
+            } catch (error) {
+                console.warn('⚠️ 無料券表示更新エラー:', error);
+            }
+
+            try {
+                this.updateGuideScreen();
+            } catch (error) {
+                console.warn('⚠️ ガイド画面更新エラー:', error);
             }
 
             try {
@@ -1356,6 +1410,9 @@ class StampApp {
 
         console.log(`🔍 [称号デバッグ] 経験値追加後: レベル=${this.level}, 称号="${newTitle}", 称号変更=${titleChanged}`);
 
+        // 無料券の自動配布（レベル10ごと）
+        this.checkAndGrantFreeTickets(oldLevel, this.level);
+
         // LocalStorageに保存（称号は保存しない）
         localStorage.setItem('exp', this.exp.toString());
         localStorage.setItem('level', this.level.toString());
@@ -1390,6 +1447,82 @@ class StampApp {
         };
     }
 
+    // レベル10ごとに無料券を自動配布
+    checkAndGrantFreeTickets(oldLevel, newLevel) {
+        try {
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log('🎫 [無料券デバッグ] レベルアップチェック開始');
+            console.log(`🎫 [無料券デバッグ] 旧レベル: ${oldLevel}`);
+            console.log(`🎫 [無料券デバッグ] 新レベル: ${newLevel}`);
+            console.log(`🎫 [無料券デバッグ] 現在の無料券数: ${this.freeTickets.length}`);
+            console.log(`🎫 [無料券デバッグ] 現在の無料券:`, this.freeTickets);
+
+            // レベル10, 20, 30, ... 100 で無料券を配布
+            const ticketLevels = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+
+            ticketLevels.forEach(ticketLevel => {
+                console.log(`\n🎫 [無料券デバッグ] レベル${ticketLevel}のチェック:`);
+                console.log(`  - oldLevel (${oldLevel}) < ticketLevel (${ticketLevel}): ${oldLevel < ticketLevel}`);
+                console.log(`  - newLevel (${newLevel}) >= ticketLevel (${ticketLevel}): ${newLevel >= ticketLevel}`);
+                console.log(`  - 10の倍数チェック (${newLevel} % 10 === 0): ${newLevel % 10 === 0}`);
+
+                // oldLevelより小さく、newLevel以上のレベルで配布
+                if (oldLevel < ticketLevel && newLevel >= ticketLevel) {
+                    console.log(`  ✅ 配布条件を満たしています`);
+
+                    // 既に同じレベルの無料券が存在するかチェック
+                    const exists = this.freeTickets.some(ticket => ticket.level === ticketLevel);
+                    console.log(`  - 既存チェック: ${exists ? '既に存在' : '存在しない'}`);
+
+                    if (!exists) {
+                        console.log(`  🎁 レベル${ticketLevel}の無料券を配布します`);
+
+                        const newTicket = {
+                            level: ticketLevel,
+                            password: null, // まだ生成されていない
+                            used: false,
+                            grantedAt: new Date().toISOString()
+                        };
+
+                        this.freeTickets.push(newTicket);
+                        localStorage.setItem('freeTickets', JSON.stringify(this.freeTickets));
+
+                        console.log(`  ✅ [無料券] レベル${ticketLevel}の無料券を付与しました`);
+                        console.log(`  📊 付与後の無料券数: ${this.freeTickets.length}`);
+                        console.log(`  📋 付与した無料券:`, newTicket);
+                    } else {
+                        console.log(`  ⚠️ レベル${ticketLevel}の無料券は既に存在します`);
+                    }
+                } else {
+                    console.log(`  ⏩ 配布条件を満たしていません`);
+                }
+            });
+
+            console.log(`\n🎫 [無料券デバッグ] 最終的な無料券数: ${this.freeTickets.length}`);
+            console.log(`🎫 [無料券デバッグ] 最終的な無料券:`, this.freeTickets);
+
+            // Firestoreにも保存
+            if (this.userId) {
+                console.log(`🎫 [無料券デバッグ] Firestoreに保存中...`);
+                db.collection('users').doc(this.userId).update({
+                    freeTickets: this.freeTickets
+                }).then(() => {
+                    console.log(`✅ [無料券デバッグ] Firestore保存成功`);
+                }).catch(err => {
+                    console.warn('⚠️ [無料券デバッグ] Firestore更新エラー:', err);
+                });
+            } else {
+                console.warn('⚠️ [無料券デバッグ] userIdがnullのためFirestoreに保存されません');
+            }
+
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+        } catch (error) {
+            console.error('❌ [無料券] 配布エラー:', error);
+            console.error('エラースタック:', error.stack);
+        }
+    }
+
     addStamp() {
         if (this.stampCount < 3) {
             this.stampCount++;
@@ -1413,6 +1546,306 @@ class StampApp {
             this.checkCouponAvailability();
 
             this.showMessage('クーポンを使用しました！スタンプカードがリセットされました。', 'success');
+        }
+    }
+
+    // 6桁のランダムパスワード（暗号）を生成
+    generateFreeTicketPassword() {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 紛らわしい文字を除外（I, O, 0, 1）
+        let password = '';
+        for (let i = 0; i < 6; i++) {
+            password += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return password;
+    }
+
+    // 無料券を使用してパスワードを生成
+    async useFreeTicket(ticketIndex) {
+        try {
+            console.log(`🎫 [無料券使用] インデックス ${ticketIndex} の無料券を使用します`);
+
+            if (ticketIndex < 0 || ticketIndex >= this.freeTickets.length) {
+                this.showMessage('無効な無料券です', 'error');
+                return;
+            }
+
+            const ticket = this.freeTickets[ticketIndex];
+
+            if (ticket.used && ticket.password) {
+                this.showMessage('この無料券は既に使用済みです', 'error');
+                return;
+            }
+
+            // パスワードを生成
+            const password = this.generateFreeTicketPassword();
+            ticket.password = password;
+            ticket.used = true;
+            ticket.usedAt = new Date().toISOString();
+
+            // LocalStorageに保存
+            localStorage.setItem('freeTickets', JSON.stringify(this.freeTickets));
+
+            // Firestoreにも保存
+            if (this.userId) {
+                await db.collection('users').doc(this.userId).update({
+                    freeTickets: this.freeTickets
+                }).catch(err => {
+                    console.warn('⚠️ 無料券のFirestore更新エラー:', err);
+                });
+            }
+
+            console.log(`✅ [無料券使用] パスワード生成完了: ${password}`);
+
+            // パスワード表示モーダルを開く
+            this.showFreeTicketPasswordModal(password, ticket.level);
+
+            // 無料券表示を更新
+            this.updateFreeTicketsDisplay();
+
+        } catch (error) {
+            console.error('❌ [無料券使用] エラー:', error);
+            this.showMessage('無料券の使用に失敗しました: ' + error.message, 'error');
+        }
+    }
+
+    // 無料券パスワード表示モーダルを表示
+    showFreeTicketPasswordModal(password, level) {
+        try {
+            const modal = document.getElementById('free-ticket-password-modal');
+            const passwordDisplay = document.getElementById('free-ticket-password-display');
+            const levelDisplay = document.getElementById('free-ticket-level-display');
+
+            if (!modal || !passwordDisplay) {
+                console.error('❌ 無料券パスワードモーダル要素が見つかりません');
+                // フォールバック: alertで表示
+                alert(`🎁 一日研修会無料券（レベル${level}）\n\nパスワード: ${password}\n\nこのパスワードを事前申込み時に記載してください。`);
+                return;
+            }
+
+            passwordDisplay.textContent = password;
+            if (levelDisplay) levelDisplay.textContent = level;
+
+            modal.style.display = 'flex';
+            console.log(`✅ [無料券モーダル] パスワード表示: ${password}`);
+
+        } catch (error) {
+            console.error('❌ [無料券モーダル] 表示エラー:', error);
+            alert(`パスワード: ${password}`);
+        }
+    }
+
+    // 無料券パスワードモーダルを閉じる
+    closeFreeTicketPasswordModal() {
+        try {
+            const modal = document.getElementById('free-ticket-password-modal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('❌ [無料券モーダル] 閉じるエラー:', error);
+        }
+    }
+
+    // 無料券パスワードをクリップボードにコピー
+    async copyFreeTicketPassword() {
+        try {
+            const passwordDisplay = document.getElementById('free-ticket-password-display');
+            if (!passwordDisplay) {
+                this.showMessage('パスワードが見つかりません', 'error');
+                return;
+            }
+
+            const password = passwordDisplay.textContent;
+
+            // クリップボードにコピー
+            await navigator.clipboard.writeText(password);
+            this.showMessage('パスワードをコピーしました！', 'success');
+
+            console.log(`✅ [無料券] パスワードをコピー: ${password}`);
+
+        } catch (error) {
+            console.error('❌ [無料券] コピーエラー:', error);
+            this.showMessage('コピーに失敗しました', 'error');
+        }
+    }
+
+    // 利用可能な無料券の枚数を取得
+    getAvailableFreeTicketsCount() {
+        return this.freeTickets.filter(ticket => !ticket.used).length;
+    }
+
+    // ユーザーズガイド画面を更新
+    updateGuideScreen() {
+        try {
+            console.log('📖 [ガイド] ガイド画面更新開始');
+
+            // レベルシステムガイドを更新
+            this.updateGuideLevelSystem();
+
+            // 特別機能の表示を更新
+            this.updateGuideSpecialFeatures();
+
+            console.log('✅ [ガイド] ガイド画面更新完了');
+        } catch (error) {
+            console.error('❌ [ガイド] 更新エラー:', error);
+        }
+    }
+
+    // レベルシステムガイドを更新（動的表示）
+    updateGuideLevelSystem() {
+        try {
+            const container = document.getElementById('guide-level-system');
+            if (!container) {
+                console.warn('⚠️ guide-level-system 要素が見つかりません');
+                return;
+            }
+
+            container.innerHTML = '';
+
+            const levelRanges = [
+                { min: 1, max: 9, title: 'みならいセラピスト' },
+                { min: 10, max: 19, title: 'たよれるセラピスト' },
+                { min: 20, max: 29, title: 'みきわめセラピスト' },
+                { min: 30, max: 39, title: 'アドバイザー' },
+                { min: 40, max: 49, title: 'ボスのみぎうで' },
+                { min: 50, max: 59, title: 'めんきょかいでん' },
+                { min: 60, max: 69, title: 'すごうで' },
+                { min: 70, max: 79, title: 'たつじん' },
+                { min: 80, max: 89, title: 'エキスパート' },
+                { min: 90, max: 99, title: 'ゴッドハンド' },
+                { min: 100, max: 100, title: 'マスターセラピスト' }
+            ];
+
+            levelRanges.forEach(range => {
+                const div = document.createElement('div');
+                div.className = 'guide-level-item';
+
+                // ユーザーのレベルが範囲内かチェック
+                const isReached = this.level >= range.min;
+                const displayTitle = isReached ? range.title : '？？？';
+
+                // 到達済みか未到達かでクラスを切り替え
+                if (isReached) {
+                    div.classList.add('reached');
+                    // 現在のレベル範囲は太字にする
+                    if (this.level >= range.min && this.level <= range.max) {
+                        div.style.fontWeight = 'bold';
+                        div.style.background = '#4f46e5'; // より濃い紫
+                    } else {
+                        div.style.background = '#6366f1'; // 通常の紫
+                    }
+                    div.style.color = '#ffffff'; // 白文字
+                } else {
+                    div.classList.add('unreached');
+                    div.style.background = '#e5e7eb'; // グレー背景
+                    div.style.color = '#6b7280'; // グレー文字
+                }
+
+                if (range.min === range.max) {
+                    div.textContent = `Lv${range.min}: ${displayTitle}`;
+                } else {
+                    div.textContent = `Lv${range.min}-${range.max}: ${displayTitle}`;
+                }
+
+                container.appendChild(div);
+            });
+
+            console.log('✅ [ガイド] レベルシステム更新完了');
+        } catch (error) {
+            console.error('❌ [ガイド] レベルシステム更新エラー:', error);
+        }
+    }
+
+    // 特別機能ガイドを更新
+    updateGuideSpecialFeatures() {
+        try {
+            // クラスシステム（Lv20）
+            const classTitle = document.getElementById('guide-class-system-title');
+            const classDesc = document.getElementById('guide-class-system-desc');
+            if (classTitle && classDesc) {
+                if (this.level >= 20) {
+                    classTitle.textContent = 'Lv20到達：クラス選択システム';
+                    classDesc.textContent = '専門分野（フットコアマスター、ハンドマスター、オールラウンダー）を選択して、対応する研修会でボーナス経験値を獲得できます。';
+                } else {
+                    classTitle.textContent = 'Lv20到達：？？？';
+                    classDesc.textContent = '専門分野を選択できる特別な機能が解放されます';
+                }
+            }
+
+            // アビリティシステム（Lv30）
+            const abilityTitle = document.getElementById('guide-ability-title');
+            const abilityDesc = document.getElementById('guide-ability-desc');
+            if (abilityTitle && abilityDesc) {
+                if (this.level >= 30) {
+                    abilityTitle.textContent = 'Lv30以上：アビリティシステム';
+                    abilityDesc.textContent = '管理者から「アシスタント」「アシスタントリーダー」「EYL認定セラピスト」などの特別なアビリティが付与されます。';
+                } else {
+                    abilityTitle.textContent = 'Lv30以上：？？？';
+                    abilityDesc.textContent = '管理者から特別なアビリティが付与されます';
+                }
+            }
+
+            // スターシステム（Lv60）
+            const starTitle = document.getElementById('guide-star-title');
+            const starDesc = document.getElementById('guide-star-desc');
+            if (starTitle && starDesc) {
+                if (this.level >= 60) {
+                    starTitle.textContent = 'Lv60以上：スターシステム';
+                    starDesc.textContent = '名前の横に★マークが表示されます。Lv70で★★、Lv80で★★★、Lv90で★★★★、Lv100で★★★★★となります。';
+                } else {
+                    starTitle.textContent = 'Lv60以上：？？？';
+                    starDesc.textContent = '名前の横に特別な印が表示されます';
+                }
+            }
+
+            console.log('✅ [ガイド] 特別機能更新完了');
+        } catch (error) {
+            console.error('❌ [ガイド] 特別機能更新エラー:', error);
+        }
+    }
+
+    // 無料券セクションを更新
+    updateFreeTicketsDisplay() {
+        try {
+            const section = document.getElementById('freeTicketSection');
+            const container = document.getElementById('free-tickets-container');
+
+            if (!section || !container) {
+                console.warn('⚠️ 無料券セクション要素が見つかりません');
+                return;
+            }
+
+            // 未使用の無料券を取得
+            const availableTickets = this.freeTickets.filter(ticket => !ticket.used);
+
+            if (availableTickets.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+
+            // 無料券リストを生成
+            container.innerHTML = '';
+
+            availableTickets.forEach((ticket, index) => {
+                const ticketDiv = document.createElement('div');
+                ticketDiv.className = 'coupon free-ticket';
+                ticketDiv.style.cssText = 'margin: 10px 0; padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; color: white;';
+
+                ticketDiv.innerHTML = `
+                    <h3>🎁 一日研修会無料券</h3>
+                    <p style="margin: 10px 0;">レベル${ticket.level}到達記念</p>
+                    <p style="font-size: 14px; margin: 5px 0;">残り: 1枚</p>
+                    <button class="btn" onclick="stampApp.useFreeTicket(${this.freeTickets.indexOf(ticket)})" style="margin-top: 10px; background: white; color: #667eea; font-weight: bold;">無料券を使用する</button>
+                `;
+
+                container.appendChild(ticketDiv);
+            });
+
+            section.style.display = 'block';
+            console.log(`✅ [無料券表示] ${availableTickets.length}枚の無料券を表示`);
+
+        } catch (error) {
+            console.error('❌ [無料券表示] エラー:', error);
         }
     }
 
@@ -1757,7 +2190,8 @@ function switchTab(tabName) {
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
     // 選択されたタブをアクティブに
-    const selectedButton = document.querySelector(`.tab-button:nth-child(${tabName === 'home' ? 1 : 2})`);
+    const tabIndex = tabName === 'home' ? 1 : 2;
+    const selectedButton = document.querySelector(`.tab-button:nth-child(${tabIndex})`);
     const selectedContent = document.getElementById(`${tabName}-tab`);
 
     if (selectedButton) selectedButton.classList.add('active');
@@ -1766,6 +2200,23 @@ function switchTab(tabName) {
     // ステータス画面に切り替えた場合は更新
     if (tabName === 'status' && window.stampApp) {
         window.stampApp.updateStatusScreen();
+    }
+}
+
+// ガイドモーダルを開く
+function openGuideModal() {
+    const modal = document.getElementById('guide-modal');
+    if (modal && window.stampApp) {
+        window.stampApp.updateGuideScreen();
+        modal.style.display = 'flex';
+    }
+}
+
+// ガイドモーダルを閉じる
+function closeGuideModal() {
+    const modal = document.getElementById('guide-modal');
+    if (modal) {
+        modal.style.display = 'none';
     }
 }
 

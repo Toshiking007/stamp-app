@@ -700,7 +700,8 @@ async function loadUsers() {
                 participationCount: data.participationCount || 0,
                 lastVisit: data.lastVisit ? data.lastVisit.toDate() : null,
                 createdAt: data.createdAt ? data.createdAt.toDate() : null,
-                abilities: data.abilities || [] // アビリティデータを追加
+                abilities: data.abilities || [], // アビリティデータを追加
+                freeTickets: data.freeTickets || [] // 無料券データを追加
             });
         });
 
@@ -804,7 +805,7 @@ function renderUsersTable() {
     tbody.innerHTML = '';
 
     if (filteredUsers.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; padding: 40px;">ユーザーが見つかりません</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="13" style="text-align: center; padding: 40px;">ユーザーが見つかりません</td></tr>';
     } else {
         filteredUsers.forEach(user => {
             const row = document.createElement('tr');
@@ -815,6 +816,31 @@ function renderUsersTable() {
                 abilitiesHtml = user.abilities.map(ability => `<span class="ability-badge">${escapeHtml(ability.name)}</span>`).join(' ');
             } else {
                 abilitiesHtml = '<span style="color: #999;">-</span>';
+            }
+
+            // 無料券の表示
+            let freeTicketsHtml = '';
+            if (user.freeTickets && user.freeTickets.length > 0) {
+                const unused = user.freeTickets.filter(t => !t.used).length;
+                const used = user.freeTickets.filter(t => t.used).length;
+
+                freeTicketsHtml = `<div style="font-size: 12px;">`;
+                freeTicketsHtml += `<div>未使用: ${unused}枚</div>`;
+                freeTicketsHtml += `<div>使用済: ${used}枚</div>`;
+
+                // パスワード一覧を表示
+                if (user.freeTickets.some(t => t.password)) {
+                    freeTicketsHtml += `<div style="margin-top: 5px; font-size: 11px; color: #666;">`;
+                    user.freeTickets.forEach(ticket => {
+                        if (ticket.password) {
+                            freeTicketsHtml += `<div>Lv${ticket.level}: ${ticket.password} ${ticket.used ? '(使用済)' : ''}</div>`;
+                        }
+                    });
+                    freeTicketsHtml += `</div>`;
+                }
+                freeTicketsHtml += `</div>`;
+            } else {
+                freeTicketsHtml = '<span style="color: #999;">-</span>';
             }
 
             // ★を取得
@@ -832,6 +858,7 @@ function renderUsersTable() {
                 <td>${user.participationCount}回</td>
                 <td>${user.lastVisit ? formatDate(user.lastVisit) : '未参加'}</td>
                 <td>${abilitiesHtml}</td>
+                <td>${freeTicketsHtml}</td>
                 <td><button class="btn btn-small btn-info ability-manage-btn" data-user-id="${user.id}" data-user-name="${escapeHtml(user.name)}">アビリティ管理</button></td>
                 <td><button class="btn btn-small btn-danger delete-user-btn" data-user-id="${user.id}" data-user-name="${escapeHtml(user.name)}">削除</button></td>
             `;
@@ -1427,3 +1454,143 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('✅ [ユーザー削除] イベント委譲設定完了（delete-user-btn）');
     console.log('✅ [アビリティ管理] すべてのイベントリスナー設定完了');
 });
+
+// ============================================
+// 無料券パスワード検証機能
+// ============================================
+
+// 無料券パスワードを検証
+async function verifyFreeTicket() {
+    try {
+        console.log('🎫 [無料券検証] 検証開始');
+
+        const passwordInput = document.getElementById('ticket-password-input');
+        const password = passwordInput.value.trim();
+
+        if (!password) {
+            alert('パスワードを入力してください');
+            return;
+        }
+
+        console.log('🔍 [無料券検証] 検証パスワード:', password);
+
+        // 全ユーザーの無料券を検索
+        const usersSnapshot = await db.collection('users').get();
+
+        for (const userDoc of usersSnapshot.docs) {
+            const userData = userDoc.data();
+            const freeTickets = userData.freeTickets || [];
+
+            const ticket = freeTickets.find(t => t.password === password);
+
+            if (ticket) {
+                // 見つかった
+                console.log('✅ [無料券検証] 有効なパスワードが見つかりました');
+                displayTicketInfo({
+                    userName: userData.name,
+                    level: ticket.level,
+                    used: ticket.used,
+                    userId: userDoc.id,
+                    password: password
+                });
+                return;
+            }
+        }
+
+        // 見つからない
+        console.log('❌ [無料券検証] パスワードが見つかりませんでした');
+        alert('無効なパスワードです');
+
+        // 結果エリアをクリア
+        const resultDiv = document.getElementById('ticket-verification-result');
+        if (resultDiv) {
+            resultDiv.innerHTML = '';
+        }
+
+    } catch (error) {
+        console.error('❌ [無料券検証] エラー:', error);
+        alert('検証エラー: ' + error.message);
+    }
+}
+
+// 無料券情報を表示
+function displayTicketInfo(info) {
+    try {
+        console.log('📋 [無料券検証] 情報表示:', info);
+
+        const resultDiv = document.getElementById('ticket-verification-result');
+        if (!resultDiv) {
+            console.error('❌ [無料券検証] 結果表示エリアが見つかりません');
+            return;
+        }
+
+        const backgroundColor = info.used ? '#fee' : '#efe';
+        const statusText = info.used ? '使用済み' : '未使用';
+        const usedButton = !info.used ?
+            `<button onclick="markTicketAsUsed('${info.userId}', '${info.password}')" class="btn btn-warning" style="margin-top: 10px;">使用済みにする</button>` :
+            '';
+
+        resultDiv.innerHTML = `
+            <div style="padding: 15px; background: ${backgroundColor}; border-radius: 8px; border: 2px solid #999; margin-top: 15px;">
+                <h4 style="margin: 0 0 10px 0; color: #000;">✅ 有効なパスワードです</h4>
+                <p style="margin: 5px 0; color: #000;"><strong>ユーザー:</strong> ${escapeHtml(info.userName)}</p>
+                <p style="margin: 5px 0; color: #000;"><strong>発行レベル:</strong> Lv${info.level}</p>
+                <p style="margin: 5px 0; color: #000;"><strong>使用状況:</strong> ${statusText}</p>
+                ${usedButton}
+            </div>
+        `;
+
+        console.log('✅ [無料券検証] 情報表示完了');
+
+    } catch (error) {
+        console.error('❌ [無料券検証] 情報表示エラー:', error);
+    }
+}
+
+// 無料券を使用済みにする
+async function markTicketAsUsed(userId, password) {
+    try {
+        console.log('🎫 [無料券使用済み] 処理開始:', { userId, password });
+
+        if (!confirm('この無料券を使用済みにしますか？')) {
+            return;
+        }
+
+        // ユーザーデータを取得
+        const userDoc = await db.collection('users').doc(userId).get();
+        if (!userDoc.exists) {
+            alert('ユーザーが見つかりません');
+            return;
+        }
+
+        const userData = userDoc.data();
+        const freeTickets = userData.freeTickets || [];
+
+        // パスワードに一致する無料券を使用済みに更新
+        const updatedTickets = freeTickets.map(ticket => {
+            if (ticket.password === password) {
+                return {
+                    ...ticket,
+                    used: true,
+                    usedAt: new Date().toISOString()
+                };
+            }
+            return ticket;
+        });
+
+        // Firestoreに保存
+        await db.collection('users').doc(userId).update({
+            freeTickets: updatedTickets
+        });
+
+        console.log('✅ [無料券使用済み] 更新完了');
+        alert('無料券を使用済みにしました');
+
+        // 再検証して表示を更新
+        verifyFreeTicket();
+
+    } catch (error) {
+        console.error('❌ [無料券使用済み] エラー:', error);
+        alert('更新エラー: ' + error.message);
+    }
+}
