@@ -145,7 +145,8 @@ class AdminPasswordManager {
                 expiryAt: new Date(expiryTime).toLocaleString('ja-JP'),
                 trainingType: trainingType,
                 expAmount: expAmount, // ★重要: これが100 or 300の数値であることを確認
-                used: false
+                usedBy: [], // 使用したユーザーのIDリスト
+                maxUses: null // null = 無制限、数値 = 制限あり
             };
 
             console.log('🔍 [バグ3デバッグ] passwordData作成完了:');
@@ -550,7 +551,8 @@ class AdminPasswordManager {
                 expiryAt: new Date(expiryTime).toLocaleString('ja-JP'),
                 trainingType: trainingType,
                 expAmount: exp, // ★重要: expAmountキーを使用（本日のパスワードと同じ）
-                used: false,
+                usedBy: [], // 使用したユーザーのIDリスト
+                maxUses: 1, // 救済措置は1人専用
                 isRescue: true // 救済パスワードであることを示すフラグ
             };
 

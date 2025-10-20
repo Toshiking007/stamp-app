@@ -506,13 +506,25 @@ class StampApp {
                 return 'expired';
             }
 
-            // 使用済みチェック
-            if (passwordData.used) {
-                console.log('🔍 パスワード認証: 既に使用済み');
+            // 新しい使用回数制限チェック
+            const usedBy = passwordData.usedBy || [];
+
+            // 自分が既に使用済みかチェック
+            if (usedBy.includes(this.userId)) {
+                console.log('🔍 パスワード認証: 自分は既に使用済み');
+                return 'used';
+            }
+
+            // 使用制限のチェック（救済措置用）
+            if (passwordData.maxUses && usedBy.length >= passwordData.maxUses) {
+                console.log('🔍 パスワード認証: 使用回数の上限に達しています');
+                console.log('🔍 maxUses:', passwordData.maxUses);
+                console.log('🔍 使用者数:', usedBy.length);
                 return 'used';
             }
 
             console.log('🔍 パスワード認証: 有効');
+            console.log('🔍 現在の使用者数:', usedBy.length);
             return true;
 
         } catch (error) {
@@ -1243,11 +1255,10 @@ class StampApp {
             // Firebase処理を並列化（バックグラウンドで実行）
             const firestorePromises = [];
 
-            // パスワードを使用済みにマーク
+            // パスワードを使用済みにマーク（usedByに自分のIDを追加）
             firestorePromises.push(
                 db.collection('passwords').doc(password).update({
-                    used: true,
-                    usedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    usedBy: firebase.firestore.FieldValue.arrayUnion(this.userId)
                 })
             );
 
